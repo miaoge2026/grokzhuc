@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from DrissionPage import Chromium, ChromiumOptions
 from DrissionPage.errors import PageDisconnectedError
 
-from email_register import get_email_and_token, get_oai_code, DuckMailConfig
+from email_register import DEFAULT_CONFIG_PATH, DuckMailConfig, get_email_and_token, get_oai_code
 
 # ============================================================
 # 配置管理 - 支持环境变量和 config.json
@@ -31,10 +31,12 @@ from email_register import get_email_and_token, get_oai_code, DuckMailConfig
 @dataclass
 class AppConfig:
     """应用配置数据类"""
+
     # 运行配置
     run_count: int = 10
     log_level: str = "INFO"
     output_dir: str = "sso"
+    config_path: Path = field(default_factory=lambda: DEFAULT_CONFIG_PATH)
 
     # 浏览器配置
     browser_proxy: str = ""
@@ -62,49 +64,74 @@ class AppConfig:
     retry_delay: float = 2.0
 
     @classmethod
-    def load(cls) -> AppConfig:
+    def load(cls, config_path: Optional[str] = None) -> AppConfig:
         """从环境变量和 config.json 加载配置"""
-        config = cls()
+        resolved_path = Path(config_path).expanduser() if config_path else DEFAULT_CONFIG_PATH
+        config = cls(config_path=resolved_path)
+        conf = _load_json_config(resolved_path)
 
-        # 从环境变量加载
-        if os.getenv("RUN_COUNT"):
-            config.run_count = int(os.getenv("RUN_COUNT"))
-        if os.getenv("LOG_LEVEL"):
-            config.log_level = os.getenv("LOG_LEVEL")
-        if os.getenv("BROWSER_PROXY"):
-            config.browser_proxy = os.getenv("BROWSER_PROXY")
-        if os.getenv("HEADLESS"):
-            config.headless = os.getenv("HEADLESS").lower() == "true"
-        if os.getenv("GROK2API_ENDPOINT"):
-            config.api_endpoint = os.getenv("GROK2API_ENDPOINT")
-        if os.getenv("GROK2API_TOKEN"):
-            config.api_token = os.getenv("GROK2API_TOKEN")
-        if os.getenv("GROK2API_APPEND"):
-            config.api_append = os.getenv("GROK2API_APPEND").lower() == "true"
+        run_conf = conf.get("run", {}) if isinstance(conf.get("run"), dict) else {}
+        api_conf = conf.get("api", {}) if isinstance(conf.get("api"), dict) else {}
 
-        # 从 config.json 加载（环境变量未设置时）
-        config_path = Path(__file__).parent / "config.json"
-        if config_path.exists():
-            with config_path.open("r", encoding="utf-8") as f:
-                conf = json.load(f)
-
-            if not os.getenv("RUN_COUNT"):
-                config.run_count = conf.get("run", {}).get("count", 10)
-            if not os.getenv("BROWSER_PROXY"):
-                config.browser_proxy = conf.get("browser_proxy", "")
-            if not os.getenv("GROK2API_ENDPOINT"):
-                config.api_endpoint = conf.get("api", {}).get("endpoint", "")
-            if not os.getenv("GROK2API_TOKEN"):
-                config.api_token = conf.get("api", {}).get("token", "")
-            if not os.getenv("GROK2API_APPEND"):
-                config.api_append = conf.get("api", {}).get("append", True)
-
+        config.run_count = _env_or_int("RUN_COUNT", run_conf.get("count", config.run_count))
+        config.log_level = os.getenv("LOG_LEVEL", str(conf.get("log_level", config.log_level))).strip() or config.log_level
+        config.browser_proxy = os.getenv("BROWSER_PROXY", str(conf.get("browser_proxy", ""))).strip()
+        config.headless = _env_or_bool("HEADLESS", bool(conf.get("headless", config.headless)))
+        config.api_endpoint = os.getenv("GROK2API_ENDPOINT", str(api_conf.get("endpoint", ""))).strip()
+        config.api_token = os.getenv("GROK2API_TOKEN", str(api_conf.get("token", ""))).strip()
+        config.api_append = _env_or_bool("GROK2API_APPEND", bool(api_conf.get("append", config.api_append)))
+        config.output_dir = str(conf.get("output_dir", config.output_dir)).strip() or config.output_dir
+        config.user_data_dir = str(conf.get("user_data_dir", config.user_data_dir)).strip() or config.user_data_dir
+        config.duckmail_config = DuckMailConfig.load(resolved_path)
         return config
 
 
 # ============================================================
 # 结构化日志配置
 # ============================================================
+
+
+def _load_json_config(config_path: Path) -> Dict[str, Any]:
+    """加载 JSON 配置文件。"""
+    if not config_path.exists():
+        return {}
+
+    with config_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not isinstance(data, dict):
+        raise ValueError(f"配置文件格式无效：{config_path}")
+
+    return data
+
+
+def _env_or_int(name: str, default: int) -> int:
+    """读取整型环境变量，解析失败时回退默认值。"""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return int(default)
+
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"[Warn] 环境变量 {name}={raw!r} 不是合法整数，回退为 {default}")
+        return int(default)
+
+
+def _env_or_bool(name: str, default: bool) -> bool:
+    """读取布尔环境变量。"""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+
+    print(f"[Warn] 环境变量 {name}={raw!r} 不是合法布尔值，回退为 {default}")
+    return default
 
 
 @dataclass
@@ -285,7 +312,6 @@ def setup_browser_options(config: AppConfig) -> ChromiumOptions:
     # Linux 自动检测 Chromium 路径
     if sys.platform == "linux":
         import glob
-        import platform
 
         # 优先用 playwright 装的 chromium
         pw_chromes = glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome"))
@@ -1380,7 +1406,7 @@ def run_single_registration(
     try:
         open_signup_page(state)
         email, dev_token = fill_email_and_submit(state, timeout=config.email_timeout)
-        code = fill_code_and_submit(state, email, dev_token, timeout=config.code_timeout)
+        fill_code_and_submit(state, email, dev_token, timeout=config.code_timeout)
         profile = fill_profile_and_submit(state, timeout=config.profile_timeout)
         sso_value = wait_for_sso_cookie(state, timeout=config.sso_timeout)
         append_sso_to_txt(sso_value, output_path)
@@ -1434,24 +1460,24 @@ def main() -> None:
     ensure_stable_python_runtime()
     warn_runtime_compatibility()
 
-    # 加载配置
-    config = AppConfig.load()
-
-    # 初始化日志
-    logger = setup_logger(config)
-
-    # 解析命令行
+    # 先解析命令行，允许覆盖配置文件路径
     parser = argparse.ArgumentParser(description="xAI 自动注册并采集 sso（优化版）")
-    parser.add_argument("--count", type=int, default=config.run_count, help=f"执行轮数，0 表示无限循环（默认 {config.run_count}）")
+    parser.add_argument("--count", type=int, help="执行轮数，0 表示无限循环")
     parser.add_argument("--output", default="sso/sso.txt", help="sso 输出 txt 路径")
     parser.add_argument("--extract-numbers", action="store_true", help="注册完成后额外提取页面数字文本（已简化）")
     parser.add_argument("--config", type=str, help="自定义配置文件路径")
     args = parser.parse_args()
 
+    # 加载配置
+    config = AppConfig.load(args.config)
+    if args.count is not None:
+        config.run_count = args.count
+
+    # 初始化日志
+    logger = setup_logger(config)
+
     # 输出路径
     output_path = Path(args.output)
-    if args.config:
-        config = AppConfig.load()  # 可扩展为加载自定义配置
 
     # 初始化浏览器
     options = setup_browser_options(config)
