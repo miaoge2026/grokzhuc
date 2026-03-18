@@ -12,12 +12,14 @@ import random
 import re
 import string
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from curl_cffi import requests as curl_requests
+
     CURL_CFFI_AVAILABLE = True
 except ImportError:
     CURL_CFFI_AVAILABLE = False
@@ -25,6 +27,9 @@ except ImportError:
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+DEFAULT_API_BASE = "https://api.duckmail.sbs"
+DEFAULT_CONFIG_PATH = Path(__file__).parent / "config.json"
 
 # ============================================================
 # 配置管理 - 支持环境变量和 config.json
@@ -34,7 +39,8 @@ from urllib3.util.retry import Retry
 @dataclass
 class DuckMailConfig:
     """DuckMail 配置数据类"""
-    api_base: str = "https://api.duckmail.sbs"
+
+    api_base: str = DEFAULT_API_BASE
     bearer_token: str = ""
     proxy: str = ""
     request_timeout: int = 15
@@ -42,28 +48,27 @@ class DuckMailConfig:
     retry_backoff: float = 1.0
 
     @classmethod
-    def load(cls) -> DuckMailConfig:
+    def load(cls, config_path: Optional[Path] = None) -> DuckMailConfig:
         """从环境变量和 config.json 加载配置"""
+        path = config_path or DEFAULT_CONFIG_PATH
+
         # 优先使用环境变量
         api_base = os.getenv("DUCKMAIL_API_BASE", "").strip()
         bearer = os.getenv("DUCKMAIL_BEARER", "").strip()
         proxy = os.getenv("HTTP_PROXY", os.getenv("HTTPS_PROXY", "")).strip()
 
         # 环境变量未设置时从 config.json 读取
-        if not api_base or not bearer:
-            config_path = Path(__file__).parent / "config.json"
-            if config_path.exists():
-                with config_path.open("r", encoding="utf-8") as f:
-                    conf = json.load(f)
-                if not api_base:
-                    api_base = conf.get("duckmail_api_base", "https://api.duckmail.sbs")
-                if not bearer:
-                    bearer = conf.get("duckmail_bearer", "")
-                if not proxy:
-                    proxy = conf.get("proxy", "")
+        if not api_base or not bearer or not proxy:
+            conf = _load_config_file(path)
+            if not api_base:
+                api_base = str(conf.get("duckmail_api_base", DEFAULT_API_BASE)).strip()
+            if not bearer:
+                bearer = str(conf.get("duckmail_bearer", "")).strip()
+            if not proxy:
+                proxy = str(conf.get("proxy", "")).strip()
 
         return cls(
-            api_base=api_base,
+            api_base=api_base or DEFAULT_API_BASE,
             bearer_token=bearer,
             proxy=proxy,
         )
@@ -78,12 +83,14 @@ def setup_logger(name: str = "duckmail") -> logging.Logger:
     """设置结构化日志器"""
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
-    logger.handlers.clear()
+
+    if getattr(logger, "_duckmail_configured", False):
+        return logger
 
     # 结构化日志格式
     fmt = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # 文件处理器
@@ -99,6 +106,8 @@ def setup_logger(name: str = "duckmail") -> logging.Logger:
     sh.setFormatter(fmt)
     logger.addHandler(sh)
 
+    logger.propagate = False
+    logger._duckmail_configured = True  # type: ignore[attr-defined]
     return logger
 
 
@@ -161,6 +170,26 @@ def get_oai_code(dev_token: str, email: str, timeout: int = 120) -> Optional[str
 # ============================================================
 
 
+def _load_config_file(config_path: Path) -> Dict[str, Any]:
+    """加载 JSON 配置文件，不存在时返回空字典。"""
+    if not config_path.exists():
+        return {}
+
+    with config_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not isinstance(data, dict):
+        raise ValueError(f"配置文件格式无效：{config_path}")
+
+    return data
+
+
+def _close_session(session: Any) -> None:
+    """尽力关闭会话，避免连接泄漏。"""
+    with suppress(Exception):
+        session.close()
+
+
 def _create_duckmail_session(config: DuckMailConfig) -> Tuple[Any, bool]:
     """
     创建 DuckMail 请求会话
@@ -185,13 +214,14 @@ def _create_duckmail_session(config: DuckMailConfig) -> Tuple[Any, bool]:
 
     # fallback to requests
     import urllib3
+
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     s = requests.Session()
     retry = Retry(
         total=config.max_retries,
         backoff_factor=config.retry_backoff,
         status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["GET", "POST"]
+        allowed_methods=["GET", "POST"],
     )
     adapter = HTTPAdapter(max_retries=retry)
     s.mount("https://", adapter)
@@ -213,7 +243,7 @@ def _do_request(
     method: str,
     url: str,
     config: DuckMailConfig,
-    **kwargs
+    **kwargs,
 ) -> Any:
     """
     统一请求执行
@@ -232,7 +262,7 @@ def _do_request(
     if use_cffi:
         kwargs.setdefault("impersonate", "chrome131")
     kwargs.setdefault("timeout", config.request_timeout)
-    logger.debug(f"发送 {method.upper()} 请求: {url}")
+    logger.debug("发送 %s 请求: %s", method.upper(), url)
     return getattr(session, method)(url, **kwargs)
 
 
@@ -261,7 +291,7 @@ def _generate_password(length: int = 14) -> str:
         random.choice(lower),
         random.choice(upper),
         random.choice(digits),
-        random.choice(special)
+        random.choice(special),
     ]
 
     # 填充剩余长度
@@ -281,7 +311,7 @@ def _validate_email_format(email: str) -> bool:
     Returns:
         bool: 格式是否有效
     """
-    pattern = r'^[a-z0-9]{8,13}@duckmail\.sbs$'
+    pattern = r"^[a-z0-9]{8,13}@duckmail\.sbs$"
     return bool(re.match(pattern, email, re.IGNORECASE))
 
 
@@ -327,11 +357,13 @@ def create_temp_email(config: Optional[DuckMailConfig] = None) -> Tuple[str, str
         # 1. 创建账号
         logger.info("正在创建邮箱账号", extra={"email": email})
         res = _do_request(
-            session, use_cffi, "post",
+            session,
+            use_cffi,
+            "post",
             f"{api_base}/accounts",
             config=config,
             json={"address": email, "password": password},
-            headers=bearer_headers
+            headers=bearer_headers,
         )
 
         if res.status_code not in (200, 201):
@@ -343,10 +375,12 @@ def create_temp_email(config: Optional[DuckMailConfig] = None) -> Tuple[str, str
         time.sleep(0.5)
         logger.info("正在获取邮件 Token")
         token_res = _do_request(
-            session, use_cffi, "post",
+            session,
+            use_cffi,
+            "post",
             f"{api_base}/token",
             config=config,
-            json={"address": email, "password": password}
+            json={"address": email, "password": password},
         )
 
         if token_res.status_code == 200:
@@ -361,12 +395,14 @@ def create_temp_email(config: Optional[DuckMailConfig] = None) -> Tuple[str, str
 
     except Exception as e:
         logger.exception("创建邮箱过程中发生异常", extra={"email": email})
-        raise Exception(f"DuckMail 创建邮箱失败：{e}")
+        raise Exception(f"DuckMail 创建邮箱失败：{e}") from e
+    finally:
+        _close_session(session)
 
 
 def fetch_emails(
     mail_token: str,
-    config: Optional[DuckMailConfig] = None
+    config: Optional[DuckMailConfig] = None,
 ) -> List[Dict[str, Any]]:
     """
     获取 DuckMail 邮件列表
@@ -381,37 +417,41 @@ def fetch_emails(
     if config is None:
         config = DuckMailConfig.load()
 
-    try:
-        api_base = config.api_base.rstrip("/")
-        headers = {"Authorization": f"Bearer {mail_token}"}
-        session, use_cffi = _create_duckmail_session(config)
+    api_base = config.api_base.rstrip("/")
+    headers = {"Authorization": f"Bearer {mail_token}"}
+    session, use_cffi = _create_duckmail_session(config)
 
+    try:
         res = _do_request(
-            session, use_cffi, "get",
+            session,
+            use_cffi,
+            "get",
             f"{api_base}/messages",
             config=config,
-            headers=headers
+            headers=headers,
         )
 
         if res.status_code == 200:
             data = res.json()
             messages = data.get("hydra:member") or data.get("member") or data.get("data") or []
-            logger.debug(f"获取到 {len(messages)} 封邮件")
+            logger.debug("获取到 %s 封邮件", len(messages))
             return messages
 
-        logger.warning(f"获取邮件列表失败：HTTP {res.status_code}")
+        logger.warning("获取邮件列表失败：HTTP %s", res.status_code)
         return []
 
     except Exception as e:
         logger.exception("获取邮件列表时发生异常", extra={"error": str(e)})
         return []
+    finally:
+        _close_session(session)
 
 
 def fetch_email_detail(
     mail_token: str,
     msg_id: str,
-    config: Optional[DuckMailConfig] = None
-) -> Optional[Dict]:
+    config: Optional[DuckMailConfig] = None,
+) -> Optional[Dict[str, Any]]:
     """
     获取 DuckMail 单封邮件详情
 
@@ -426,39 +466,43 @@ def fetch_email_detail(
     if config is None:
         config = DuckMailConfig.load()
 
-    try:
-        api_base = config.api_base.rstrip("/")
-        headers = {"Authorization": f"Bearer {mail_token}"}
-        session, use_cffi = _create_duckmail_session(config)
+    api_base = config.api_base.rstrip("/")
+    headers = {"Authorization": f"Bearer {mail_token}"}
+    session, use_cffi = _create_duckmail_session(config)
 
+    try:
         # 标准化 msg_id
         if isinstance(msg_id, str) and msg_id.startswith("/messages/"):
             msg_id = msg_id.split("/")[-1]
 
         res = _do_request(
-            session, use_cffi, "get",
+            session,
+            use_cffi,
+            "get",
             f"{api_base}/messages/{msg_id}",
             config=config,
-            headers=headers
+            headers=headers,
         )
 
         if res.status_code == 200:
-            logger.debug(f"获取邮件详情成功：{msg_id}")
+            logger.debug("获取邮件详情成功：%s", msg_id)
             return res.json()
 
-        logger.warning(f"获取邮件详情失败：HTTP {res.status_code}")
+        logger.warning("获取邮件详情失败：HTTP %s", res.status_code)
         return None
 
-    except Exception as e:
+    except Exception:
         logger.exception("获取邮件详情时发生异常", extra={"msg_id": msg_id})
         return None
+    finally:
+        _close_session(session)
 
 
 def wait_for_verification_code(
     mail_token: str,
     timeout: int = 120,
     poll_interval: float = 3.0,
-    config: Optional[DuckMailConfig] = None
+    config: Optional[DuckMailConfig] = None,
 ) -> Optional[str]:
     """
     轮询 DuckMail 等待验证码邮件
@@ -476,7 +520,7 @@ def wait_for_verification_code(
     seen_ids: set = set()
     poll_count = 0
 
-    logger.info(f"开始轮询验证码，超时={timeout}s", extra={"mail_token": mail_token[:8]})
+    logger.info("开始轮询验证码，超时=%ss", timeout, extra={"mail_token": mail_token[:8]})
 
     while time.time() - start_time < timeout:
         poll_count += 1
@@ -491,7 +535,7 @@ def wait_for_verification_code(
                 continue
 
             seen_ids.add(msg_id)
-            logger.debug(f"检查新邮件：{msg_id}")
+            logger.debug("检查新邮件：%s", msg_id)
 
             detail = fetch_email_detail(mail_token, str(msg_id), config)
             if detail:
@@ -499,16 +543,16 @@ def wait_for_verification_code(
                 code = extract_verification_code(content)
                 if code:
                     elapsed = time.time() - start_time
-                    logger.info(f"验证码提取成功：{code}", extra={"elapsed": elapsed})
+                    logger.info("验证码提取成功：%s", code, extra={"elapsed": elapsed})
                     return code
 
         if poll_count % 5 == 0:
             elapsed = time.time() - start_time
-            logger.debug(f"轮询中... {poll_count}次，已耗时{elapsed:.1f}s")
+            logger.debug("轮询中... %s次，已耗时%.1fs", poll_count, elapsed)
 
         time.sleep(poll_interval)
 
-    logger.warning(f"验证码轮询超时，共轮询{poll_count}次")
+    logger.warning("验证码轮询超时，共轮询%s次", poll_count)
     return None
 
 
@@ -538,7 +582,7 @@ def extract_verification_code(content: str) -> Optional[str]:
     match = re.search(
         r"(?:verification code|验证码|your code)[:\s]*[<>\s]*([A-Z0-9]{3}-[A-Z0-9]{3})\b",
         content,
-        re.IGNORECASE
+        re.IGNORECASE,
     )
     if match:
         return match.group(1)
@@ -546,7 +590,7 @@ def extract_verification_code(content: str) -> Optional[str]:
     # 模式 3: HTML 样式包裹
     match = re.search(
         r"background-color:\s*#F3F3F3[^>]*>[\s\S]*?([A-Z0-9]{3}-[A-Z0-9]{3})[\s\S]*?</p>",
-        content
+        content,
     )
     if match:
         return match.group(1)

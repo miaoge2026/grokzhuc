@@ -1,0 +1,6 @@
+[tool.ruff]
+extend-exclude = [
+  "backup",
+  "logs",
+  "__pycache__",
+]
