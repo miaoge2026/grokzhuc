@@ -2,10 +2,26 @@
     "run": {
         "count": 10
     },
+    "log_level": "INFO",
     "duckmail_api_base": "https://api.duckmail.sbs",
     "duckmail_bearer": "<your_duckmail_bearer_token>",
     "proxy": "",
     "browser_proxy": "",
+    "headless": true,
+    "output_dir": "sso",
+    "user_data_dir": "chrome_data",
+    "chromium_path": "",
+    "timeouts": {
+        "email": 15,
+        "code": 180,
+        "profile": 120,
+        "sso": 120,
+        "page": 60
+    },
+    "retry": {
+        "max_retries": 3,
+        "delay": 2.0
+    },
     "api": {
         "endpoint": "",
         "token": "",

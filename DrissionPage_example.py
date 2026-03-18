@@ -72,16 +72,26 @@ class AppConfig:
 
         run_conf = conf.get("run", {}) if isinstance(conf.get("run"), dict) else {}
         api_conf = conf.get("api", {}) if isinstance(conf.get("api"), dict) else {}
+        timeout_conf = conf.get("timeouts", {}) if isinstance(conf.get("timeouts"), dict) else {}
+        retry_conf = conf.get("retry", {}) if isinstance(conf.get("retry"), dict) else {}
 
         config.run_count = _env_or_int("RUN_COUNT", run_conf.get("count", config.run_count))
         config.log_level = os.getenv("LOG_LEVEL", str(conf.get("log_level", config.log_level))).strip() or config.log_level
         config.browser_proxy = os.getenv("BROWSER_PROXY", str(conf.get("browser_proxy", ""))).strip()
         config.headless = _env_or_bool("HEADLESS", bool(conf.get("headless", config.headless)))
+        config.chromium_path = _env_or_str("CHROMIUM_PATH", conf.get("chromium_path", config.chromium_path))
         config.api_endpoint = os.getenv("GROK2API_ENDPOINT", str(api_conf.get("endpoint", ""))).strip()
         config.api_token = os.getenv("GROK2API_TOKEN", str(api_conf.get("token", ""))).strip()
         config.api_append = _env_or_bool("GROK2API_APPEND", bool(api_conf.get("append", config.api_append)))
-        config.output_dir = str(conf.get("output_dir", config.output_dir)).strip() or config.output_dir
-        config.user_data_dir = str(conf.get("user_data_dir", config.user_data_dir)).strip() or config.user_data_dir
+        config.output_dir = _env_or_str("OUTPUT_DIR", conf.get("output_dir", config.output_dir)) or config.output_dir
+        config.user_data_dir = _env_or_str("USER_DATA_DIR", conf.get("user_data_dir", config.user_data_dir)) or config.user_data_dir
+        config.email_timeout = _env_or_int("EMAIL_TIMEOUT", timeout_conf.get("email", config.email_timeout))
+        config.code_timeout = _env_or_int("CODE_TIMEOUT", timeout_conf.get("code", config.code_timeout))
+        config.profile_timeout = _env_or_int("PROFILE_TIMEOUT", timeout_conf.get("profile", config.profile_timeout))
+        config.sso_timeout = _env_or_int("SSO_TIMEOUT", timeout_conf.get("sso", config.sso_timeout))
+        config.page_timeout = _env_or_int("PAGE_TIMEOUT", timeout_conf.get("page", config.page_timeout))
+        config.max_retries = _env_or_int("MAX_RETRIES", retry_conf.get("max_retries", config.max_retries))
+        config.retry_delay = _env_or_float("RETRY_DELAY", retry_conf.get("delay", config.retry_delay))
         config.duckmail_config = DuckMailConfig.load(resolved_path)
         return config
 
@@ -132,6 +142,27 @@ def _env_or_bool(name: str, default: bool) -> bool:
 
     print(f"[Warn] 环境变量 {name}={raw!r} 不是合法布尔值，回退为 {default}")
     return default
+
+
+def _env_or_float(name: str, default: float) -> float:
+    """读取浮点环境变量，解析失败时回退默认值。"""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return float(default)
+
+    try:
+        return float(raw)
+    except ValueError:
+        print(f"[Warn] 环境变量 {name}={raw!r} 不是合法浮点数，回退为 {default}")
+        return float(default)
+
+
+def _env_or_str(name: str, default: Optional[Any]) -> str:
+    """读取字符串环境变量，空值回退默认值。"""
+    raw = os.getenv(name)
+    if raw is not None and raw.strip():
+        return raw.strip()
+    return "" if default is None else str(default).strip()
 
 
 @dataclass
@@ -195,6 +226,7 @@ class BrowserState:
     browser: Optional[Chromium] = None
     page: Optional[Any] = None
     user_data_dir: Path = field(default_factory=lambda: Path("./chrome_data"))
+    options: Optional[ChromiumOptions] = None
 
 
 class RegistrationResult:
@@ -287,10 +319,10 @@ def setup_browser_options(config: AppConfig) -> ChromiumOptions:
     """
     co = ChromiumOptions()
     co.auto_port()
-    
-    # 不强制 headless - 在 Xvfb 环境下会自动使用虚拟显示
-    # co.set_argument("--headless=new")
-    
+
+    if config.headless:
+        co.set_argument("--headless=new")
+
     co.set_argument("--no-sandbox")
     co.set_argument("--disable-gpu")
     co.set_argument("--disable-dev-shm-usage")
@@ -302,15 +334,17 @@ def setup_browser_options(config: AppConfig) -> ChromiumOptions:
     co.set_argument("--disable-features=IsolateOrigins,site-per-process")
     
     # 增加页面加载超时
-    co.set_timeouts(base=5, page_load=30, script=30)
+    co.set_timeouts(base=5, page_load=config.page_timeout, script=config.page_timeout)
 
     # 代理配置
     if config.browser_proxy:
         co.set_proxy(config.browser_proxy)
         print(f"[*] 浏览器代理：{config.browser_proxy}")
 
+    if config.chromium_path:
+        co.set_browser_path(config.chromium_path)
     # Linux 自动检测 Chromium 路径
-    if sys.platform == "linux":
+    elif sys.platform == "linux":
         import glob
 
         # 优先用 playwright 装的 chromium
@@ -327,8 +361,6 @@ def setup_browser_options(config: AppConfig) -> ChromiumOptions:
         user_data = Path(__file__).parent / config.user_data_dir
         user_data.mkdir(exist_ok=True)
         co.set_user_data_path(str(user_data))
-
-    co.set_timeouts(base=1)
 
     # 加载 Turnstile 修复扩展
     ext_path = Path(__file__).parent / "turnstilePatch"
@@ -351,6 +383,7 @@ def start_browser(options: ChromiumOptions, state: BrowserState) -> None:
     if state.user_data_dir.exists():
         shutil.rmtree(state.user_data_dir, ignore_errors=True)
     state.user_data_dir.mkdir(exist_ok=True)
+    state.options = options
 
     state.browser = Chromium(options)
     tabs = state.browser.get_tabs()
@@ -397,7 +430,9 @@ def refresh_active_page(state: BrowserState) -> None:
         state: 浏览器状态
     """
     if state.browser is None:
-        start_browser(options=setup_browser_options(AppConfig.load()), state=state)
+        if state.options is None:
+            raise RuntimeError("浏览器选项未初始化，无法刷新页面")
+        start_browser(options=state.options, state=state)
         return
 
     try:
@@ -407,7 +442,9 @@ def refresh_active_page(state: BrowserState) -> None:
         else:
             state.page = state.browser.new_tab()
     except Exception:
-        restart_browser(options=setup_browser_options(AppConfig.load()), state=state)
+        if state.options is None:
+            raise RuntimeError("浏览器选项未初始化，无法重启浏览器")
+        restart_browser(options=state.options, state=state)
 
 
 # ============================================================
@@ -1478,6 +1515,8 @@ def main() -> None:
 
     # 输出路径
     output_path = Path(args.output)
+    if output_path == Path(parser.get_default("output")):
+        output_path = Path(config.output_dir) / "sso.txt"
 
     # 初始化浏览器
     options = setup_browser_options(config)

@@ -51,10 +51,26 @@ cp config.example.json config.json
 ```json
 {
     "run": { "count": 10 },
+    "log_level": "INFO",
     "duckmail_api_base": "https://api.duckmail.sbs",
     "duckmail_bearer": "<your_duckmail_bearer_token>",
     "proxy": "",
     "browser_proxy": "",
+    "headless": true,
+    "output_dir": "sso",
+    "user_data_dir": "chrome_data",
+    "chromium_path": "",
+    "timeouts": {
+        "email": 15,
+        "code": 180,
+        "profile": 120,
+        "sso": 120,
+        "page": 60
+    },
+    "retry": {
+        "max_retries": 3,
+        "delay": 2.0
+    },
     "api": {
         "endpoint": "",
         "token": "",
@@ -72,9 +88,28 @@ cp config.example.json config.json
 | `duckmail_bearer` | string | DuckMail Bearer Token（[获取方式](#获取-duckmail-bearer-token)） |
 | `proxy` | string | DuckMail API 请求代理（可选） |
 | `browser_proxy` | string | 浏览器代理，无头服务器需翻墙时填写（可选） |
+| `headless` | bool | 是否启用 Chromium headless 模式 |
+| `output_dir` | string | SSO token 输出目录 |
+| `user_data_dir` | string | 浏览器用户数据目录 |
+| `chromium_path` | string | 自定义 Chromium/Chrome 可执行文件路径 |
+| `timeouts.*` | int | 邮箱、验证码、资料提交、SSO、页面加载超时 |
+| `retry.max_retries` | int | 轮次失败后的最大重试次数（HTTP 请求重试） |
+| `retry.delay` | float | 每轮注册完成后的等待秒数 |
 | `api.endpoint` | string | grok2api 管理接口地址，留空跳过推送 |
 | `api.token` | string | grok2api 的 `app_key` |
 | `api.append` | bool | `true` 合并线上已有 token，`false` 覆盖 |
+
+### 环境变量覆盖
+
+仓库提供 `.env.example` 作为变量模板，常用变量包括：
+
+- `DUCKMAIL_BEARER` / `DUCKMAIL_API_BASE`
+- `BROWSER_PROXY` / `CHROMIUM_PATH`
+- `OUTPUT_DIR` / `USER_DATA_DIR`
+- `HEADLESS` / `RUN_COUNT` / `LOG_LEVEL`
+- `EMAIL_TIMEOUT` / `CODE_TIMEOUT` / `PROFILE_TIMEOUT` / `SSO_TIMEOUT` / `PAGE_TIMEOUT`
+- `MAX_RETRIES` / `RETRY_DELAY`
+- `GROK2API_ENDPOINT` / `GROK2API_TOKEN` / `GROK2API_APPEND`
 
 ---
 
