@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+logs/
+sso/
+chrome_data/
+.pytest_cache/
+.env
