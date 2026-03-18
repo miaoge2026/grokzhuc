@@ -1,0 +1,14 @@
+{
+    "run": {
+        "count": 1
+    },
+    "duckmail_api_base": "https://api.duckmail.sbs",
+    "duckmail_bearer": "dk_89a081eb854d349674f65457c6c1d965b91fe13a1344ab30b44a0029d12e601f",
+    "proxy": "",
+    "browser_proxy": "",
+    "api": {
+        "endpoint": "",
+        "token": "",
+        "append": true
+    }
+}

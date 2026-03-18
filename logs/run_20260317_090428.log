@@ -1,0 +1,10 @@
+2026-03-17 09:04:28 | INFO     | grok_register | 日志初始化完成
+2026-03-17 09:05:06 | ERROR    | grok_register | 第1轮注册失败
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1305, in run_single_registration
+    email, dev_token = fill_email_and_submit(state, timeout=config.email_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 590, in fill_email_and_submit
+    raise Exception("未找到邮箱输入框或注册按钮")
+Exception: 未找到邮箱输入框或注册按钮
+2026-03-17 09:05:09 | INFO     | grok_register | 程序执行完成

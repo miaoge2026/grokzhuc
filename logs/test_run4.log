@@ -1,0 +1,35 @@
+2026-03-17 09:04:28 | INFO     | grok_register | 日志初始化完成
+2026-03-17 09:04:50 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:04:50 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:04:51 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:04:51 | INFO     | duckmail | 邮箱创建成功
+[*] 已加载 Turnstile 扩展：/root/.openclaw/workspace/grok-register/turnstilePatch
+[*] 浏览器启动成功
+
+[*] 开始第 1 轮注册
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[*] 点击尝试失败：'MixTab' object has no attribute 'is_alive'
+[!] 未找到邮箱注册按钮
+2026-03-17 09:05:06 | ERROR    | grok_register | 第1轮注册失败
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1305, in run_single_registration
+    email, dev_token = fill_email_and_submit(state, timeout=config.email_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 590, in fill_email_and_submit
+    raise Exception("未找到邮箱输入框或注册按钮")
+Exception: 未找到邮箱输入框或注册按钮
+[*] 浏览器启动成功
+2026-03-17 09:05:09 | INFO     | grok_register | 程序执行完成

@@ -1,0 +1,33 @@
+2026-03-17 09:02:35 | INFO     | grok_register | 日志初始化完成
+2026-03-17 09:02:37 | ERROR    | grok_register | 第1轮注册失败
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_elements/chromium_element.py", line 1202, in run_js
+    res = page._run_cdp('Runtime.callFunctionOn', functionDeclaration=script, objectId=obj_id,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_pages/chromium_base.py", line 383, in _run_cdp
+    return r if __ERROR__ not in r else raise_error(r, self.browser, ignore)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_functions/tools.py", line 202, in raise_error
+    raise r
+DrissionPage.errors.ContextLostError: 页面被刷新，请操作前尝试等待页面刷新或加载完成。
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1255, in run_single_registration
+    open_signup_page(state)
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 391, in open_signup_page
+    click_email_signup_button(state)
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 411, in click_email_signup_button
+    clicked = state.page.run_js(r"""
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_pages/chromium_base.py", line 390, in run_js
+    return self._run_js(script, *args, as_expr=as_expr, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_pages/chromium_base.py", line 397, in _run_js
+    return run_js(self, script, as_expr, self.timeouts.script if timeout is None else timeout, args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_elements/chromium_element.py", line 1208, in run_js
+    raise ContextLostError('页面已被刷新，请尝试等待页面加载完成再执行操作。') if is_page else ElementLostError(
+DrissionPage.errors.ContextLostError: 页面已被刷新，请尝试等待页面加载完成再执行操作。
+2026-03-17 09:02:41 | INFO     | grok_register | 程序执行完成

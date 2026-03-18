@@ -1,0 +1,42 @@
+# Grok 注册工具 Docker Compose 配置
+# 用于方便地管理和运行容器化部署
+
+services:
+  grok-register:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: grok-register
+    volumes:
+      # 挂载配置文件（运行时修改）
+      - ./config.json:/app/config.json:ro
+      # 挂载输出目录（持久化 SSO token 和日志）
+      - ./sso:/app/sso
+      - ./logs:/app/logs
+    environment:
+      # 必需：DuckMail Bearer Token
+      - DUCKMAIL_BEARER=${DUCKMAIL_BEARER:-}
+      # 可选：API 地址
+      - DUCKMAIL_API_BASE=${DUCKMAIL_API_BASE:-https://api.duckmail.sbs}
+      # 可选：代理设置
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      # 可选：注册轮数（覆盖 config.json 设置）
+      - REGISTER_COUNT=${REGISTER_COUNT:-}
+    # 无头模式运行
+    stdin_open: false
+    tty: false
+    # 自动清理退出容器
+    restart: "no"
+    # 资源限制（可选）
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 2G
+
+# 使用说明：
+# 1. 首次构建：docker-compose build
+# 2. 运行：docker-compose up
+# 3. 指定轮数：REGISTER_COUNT=50 docker-compose up
+# 4. 后台运行：docker-compose up -d（查看日志：docker-compose logs -f）
+# 5. 清理：docker-compose down

@@ -1,0 +1,14 @@
+2026-03-17 09:11:09 | INFO     | grok_register | 日志初始化完成
+2026-03-17 09:11:28 | ERROR    | grok_register | 第1轮注册失败
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1348, in run_single_registration
+    profile = fill_profile_and_submit(state, timeout=config.profile_timeout)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1105, in fill_profile_and_submit
+    turnstile_token = get_turnstile_token(state)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 939, in get_turnstile_token
+    print(f"[*] Turnstile 等待中... ({int(time.time() - start_time)}s)")
+                                                        ^^^^^^^^^^
+NameError: name 'start_time' is not defined
+2026-03-17 09:11:32 | INFO     | grok_register | 程序执行完成

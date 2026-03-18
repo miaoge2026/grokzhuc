@@ -1,0 +1,42 @@
+2026-03-17 09:01:54 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:01:54 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:01:54 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:04:50 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:04:50 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:04:51 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:04:51 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:05:31 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:05:31 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:05:31 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:05:31 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:05:32 | INFO     | duckmail | 开始轮询验证码，超时=180s
+2026-03-17 09:05:36 | INFO     | duckmail | 验证码提取成功：V3F-305
+2026-03-17 09:05:36 | INFO     | duckmail | 验证码获取成功
+2026-03-17 09:06:49 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:06:50 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:06:50 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:06:50 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:06:50 | INFO     | duckmail | 开始轮询验证码，超时=180s
+2026-03-17 09:06:54 | INFO     | duckmail | 验证码提取成功：T65-6Y5
+2026-03-17 09:06:54 | INFO     | duckmail | 验证码获取成功
+2026-03-17 09:11:17 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:11:18 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:11:18 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:11:18 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:11:19 | INFO     | duckmail | 开始轮询验证码，超时=180s
+2026-03-17 09:11:22 | INFO     | duckmail | 验证码提取成功：TN1-AKO
+2026-03-17 09:11:22 | INFO     | duckmail | 验证码获取成功
+2026-03-17 09:11:49 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:11:50 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:11:50 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:11:50 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:11:51 | INFO     | duckmail | 开始轮询验证码，超时=180s
+2026-03-17 09:11:54 | INFO     | duckmail | 验证码提取成功：2X1-FTT
+2026-03-17 09:11:54 | INFO     | duckmail | 验证码获取成功
+2026-03-17 09:14:16 | INFO     | duckmail | 正在创建邮箱账号
+2026-03-17 09:14:16 | INFO     | duckmail | 正在获取邮件 Token
+2026-03-17 09:14:16 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:14:16 | INFO     | duckmail | 邮箱创建成功
+2026-03-17 09:14:17 | INFO     | duckmail | 开始轮询验证码，超时=180s
+2026-03-17 09:14:21 | INFO     | duckmail | 验证码提取成功：7QP-RMS
+2026-03-17 09:14:21 | INFO     | duckmail | 验证码获取成功

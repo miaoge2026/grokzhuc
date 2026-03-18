@@ -1,0 +1,13 @@
+2026-03-17 09:05:23 | INFO     | grok_register | 日志初始化完成
+2026-03-17 09:06:27 | ERROR    | grok_register | 第1轮注册失败
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1305, in run_single_registration
+    profile = fill_profile_and_submit(state, timeout=config.profile_timeout)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1062, in fill_profile_and_submit
+    turnstile_token = get_turnstile_token(state)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 899, in get_turnstile_token
+    raise Exception("failed to solve turnstile")
+Exception: failed to solve turnstile
+2026-03-17 09:06:31 | INFO     | grok_register | 程序执行完成

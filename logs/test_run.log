@@ -1,0 +1,26 @@
+2026-03-17 09:01:56 | INFO     | grok_register | 日志初始化完成
+[*] 已加载 Turnstile 扩展：/root/.openclaw/workspace/grok-register/turnstilePatch
+2026-03-17 09:02:26 | INFO     | grok_register | 程序执行完成
+Traceback (most recent call last):
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1382, in <module>
+    main()
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 1338, in main
+    start_browser(options, state)
+  File "/root/.openclaw/workspace/grok-register/DrissionPage_example.py", line 317, in start_browser
+    state.browser = Chromium(options)
+                    ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_base/chromium.py", line 43, in __new__
+    is_headless, browser_id, is_exists = run_browser(opt)
+                                         ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_base/chromium.py", line 464, in run_browser
+    is_exists = connect_browser(chromium_options)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/DrissionPage/_functions/browser.py", line 57, in connect_browser
+    raise BrowserConnectError(f'\n{address}浏览器连接失败。\n请确认：\n'
+DrissionPage.errors.BrowserConnectError: 
+127.0.0.1:9222浏览器连接失败。
+请确认：
+1、用户文件夹没有和已打开的浏览器冲突
+2、如为无界面系统，请添加'--headless=new'启动参数
+3、如果是Linux系统，尝试添加'--no-sandbox'启动参数
+可使用ChromiumOptions设置端口和用户文件夹路径。
